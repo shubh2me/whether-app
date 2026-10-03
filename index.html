@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2b6cb0">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9B%85%3C/text%3E%3C/svg%3E">
+<title>Weather Now</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg1:#2b6cb0; --bg2:#f6ad55; --ink:#fff; --soft:rgba(255,255,255,.78); --panel:rgba(255,255,255,.14); --line:rgba(255,255,255,.28); }
+  body[data-theme="night"] { --bg1:#0b1437; --bg2:#3b3a7a; }
+  body[data-theme="clouds"] { --bg1:#4a5568; --bg2:#8fa3b8; }
+  body[data-theme="rain"] { --bg1:#1f3a4d; --bg2:#4f7a8c; }
+  body[data-theme="storm"] { --bg1:#1a1530; --bg2:#5a4a86; }
+  body[data-theme="snow"] { --bg1:#4b6a8a; --bg2:#a9c4de; }
+  body[data-theme="mist"] { --bg1:#57606b; --bg2:#a3a9b0; }
+
+  * { box-sizing:border-box; margin:0; }
+  html { -webkit-text-size-adjust:100%; text-size-adjust:100%; background:#1a202c; }
+  body { font-family:"Outfit",system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--ink); min-height:100vh; min-height:100dvh;
+    padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(40px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); }
+  body::before { content:""; position:fixed; inset:0; z-index:-1; background:linear-gradient(160deg,var(--bg1),var(--bg2)); }
+  main { max-width:760px; margin:0 auto; }
+  button,input { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid #fff; outline-offset:2px; }
+
+  .searchwrap { position:relative; }
+  .search { display:flex; gap:8px; }
+  .search input { flex:1; min-width:0; min-height:48px; font-size:16px; -webkit-appearance:none; appearance:none; padding:12px 16px; border-radius:12px; border:1px solid var(--line); background:var(--panel); }
+  .search input::placeholder { color:var(--soft); }
+  .btn { padding:12px 18px; border-radius:12px; border:1px solid var(--line); background:#fff; color:#1a202c; font-weight:600; cursor:pointer; }
+  .btn.ghost { background:var(--panel); color:var(--ink); }
+  .btn.small { padding:6px 12px; border-radius:999px; font-size:.9rem; }
+  .btn[aria-pressed="true"] { background:#fff; color:#1a202c; }
+
+  #sugg { position:absolute; left:0; right:0; top:100%; margin-top:6px; z-index:5; list-style:none; padding:6px;
+    background:#1a202c; border:1px solid var(--line); border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+  #sugg li button { width:100%; text-align:left; background:none; border:0; padding:10px 12px; border-radius:8px; cursor:pointer; }
+  #sugg li button:hover, #sugg li button:focus-visible { background:rgba(255,255,255,.14); }
+  #sugg small { color:var(--soft); }
+
+  .bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-top:12px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .units { display:flex; gap:6px; }
+
+  #status { margin-top:16px; min-height:1.4em; color:var(--soft); }
+  #status.error { color:#ffe0e0; background:rgba(180,30,30,.35); padding:10px 14px; border-radius:10px; }
+
+  .place { font-size:1.5rem; font-weight:600; margin-top:8px; }
+  .meta { color:var(--soft); margin-top:2px; }
+  .hero { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; }
+  .temp { font-size:clamp(5rem,22vw,8.5rem); font-weight:300; line-height:1; letter-spacing:-.04em; }
+  .temp sup { font-size:.32em; font-weight:400; vertical-align:top; position:relative; top:.4em; margin-left:.05em; }
+  .desc { font-size:1.2rem; }
+  .hilo { color:var(--soft); margin-top:2px; }
+  .emoji { font-size:clamp(4rem,16vw,6.5rem); line-height:1; }
+
+  h2 { font-size:1rem; font-weight:600; margin:26px 0 10px; }
+  .stats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:22px; }
+  @media (min-width:560px) { .stats { grid-template-columns:repeat(3,1fr); } }
+  .stat,.day,.hour { background:var(--panel); border:1px solid var(--line); border-radius:14px; }
+  .stat { padding:12px 14px; }
+  .stat span { display:block; color:var(--soft); font-size:.85rem; }
+  .stat b { font-size:1.2rem; font-weight:600; }
+
+  .hours { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; }
+  .hour { flex:0 0 72px; text-align:center; padding:10px 4px; }
+  .hour .e { font-size:1.5rem; margin:4px 0; }
+  .hour .p { color:var(--soft); font-size:.8rem; min-height:1.1em; }
+
+  .days { display:grid; gap:8px; }
+  .day { display:grid; grid-template-columns:64px 36px 1fr auto; align-items:center; gap:10px; padding:10px 14px; }
+  .day .d { font-weight:600; }
+  .day .e { font-size:1.5rem; }
+  .day .r { color:var(--soft); font-size:.9rem; }
+  .day .t b { font-weight:600; } .day .t span { color:var(--soft); margin-left:8px; }
+  [hidden] { display:none !important; }
+
+  /* Responsive: phone → tablet → desktop */
+  .col { min-width:0; }
+  .credit { margin-top:28px; text-align:center; font-size:.85rem; color:var(--soft); }
+  .credit a { color:#fff; }
+  .place, .meta, #sugg li button { overflow-wrap:anywhere; }
+  #sugg { max-height:50vh; overflow:auto; }
+  .hours { -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; scrollbar-width:thin; }
+  @media (pointer:coarse) {
+    .btn.small { min-height:44px; padding:8px 14px; }
+    #sugg li button { padding:14px 12px; }
+  }
+  @media (max-width:420px) {
+    .day { grid-template-columns:52px 30px 1fr auto; gap:8px; padding:10px; }
+    .day .r { font-size:.8rem; }
+    .hour { flex-basis:64px; }
+    .place { font-size:1.3rem; }
+  }
+  @media (min-width:900px) {
+    main { max-width:1040px; }
+    #out { display:grid; grid-template-columns:1.05fr 1fr; gap:40px; align-items:start; }
+    #out .col:last-child h2:first-child { margin-top:8px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="searchwrap">
+    <form class="search" id="form" autocomplete="off">
+      <input id="q" type="search" placeholder="Search any city" aria-label="City name" required>
+      <button class="btn" type="submit">Search</button>
+    </form>
+    <ul id="sugg" hidden></ul>
+  </div>
+
+  <div class="bar">
+    <div class="chips" id="chips"></div>
+    <div class="units">
+      <button class="btn ghost small" id="refresh">Refresh</button>
+      <button class="btn ghost small" id="loc">Use my location</button>
+      <button class="btn ghost small" data-u="c" aria-pressed="true">°C</button>
+      <button class="btn ghost small" data-u="f" aria-pressed="false">°F</button>
+    </div>
+  </div>
+
+  <p id="status" role="status" aria-live="polite"></p>
+
+  <section id="out" hidden>
+    <div class="col">
+    <div class="place" id="place"></div>
+    <div class="meta" id="time"></div>
+    <div class="hero">
+      <div>
+        <div class="temp" id="temp"></div>
+        <div class="desc" id="desc"></div>
+        <div class="hilo" id="hilo"></div>
+      </div>
+      <div class="emoji" id="emoji" aria-hidden="true"></div>
+    </div>
+    <div class="stats" id="stats"></div>
+    </div>
+    <div class="col">
+    <h2>Next 24 hours</h2>
+    <div class="hours" id="hours"></div>
+    <h2>7-day forecast</h2>
+    <div class="days" id="days"></div>
+    </div>
+  </section>
+
+  <footer class="credit">Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0)</footer>
+</main>
+
+<script>
+  // Open-Meteo: free REST API, no API key needed.
+  const GEO = "https://geocoding-api.open-meteo.com/v1/search";
+  const FC = "https://api.open-meteo.com/v1/forecast";
+  const CITIES = ["Mumbai", "Delhi", "London", "New York", "Tokyo", "Sydney"];
+
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} }
+  };
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  let unit = store.get("unit") || "c";
+  let place = null;
+
+  // WMO weather code -> [label, day emoji, night emoji, theme]
+  const WMO = {
+    0: ["Clear sky", "☀️", "🌙", "clear"], 1: ["Mainly clear", "🌤️", "🌙", "clear"], 2: ["Partly cloudy", "⛅", "☁️", "clouds"], 3: ["Overcast", "☁️", "☁️", "clouds"],
+    45: ["Fog", "🌫️", "🌫️", "mist"], 48: ["Freezing fog", "🌫️", "🌫️", "mist"],
+    51: ["Light drizzle", "🌦️", "🌧️", "rain"], 53: ["Drizzle", "🌦️", "🌧️", "rain"], 55: ["Heavy drizzle", "🌧️", "🌧️", "rain"],
+    56: ["Freezing drizzle", "🌧️", "🌧️", "rain"], 57: ["Freezing drizzle", "🌧️", "🌧️", "rain"],
+    61: ["Light rain", "🌦️", "🌧️", "rain"], 63: ["Rain", "🌧️", "🌧️", "rain"], 65: ["Heavy rain", "🌧️", "🌧️", "rain"],
+    66: ["Freezing rain", "🌧️", "🌧️", "rain"], 67: ["Freezing rain", "🌧️", "🌧️", "rain"],
+    71: ["Light snow", "🌨️", "🌨️", "snow"], 73: ["Snow", "❄️", "❄️", "snow"], 75: ["Heavy snow", "❄️", "❄️", "snow"], 77: ["Snow grains", "❄️", "❄️", "snow"],
+    80: ["Rain showers", "🌦️", "🌧️", "rain"], 81: ["Rain showers", "🌧️", "🌧️", "rain"], 82: ["Violent showers", "🌧️", "🌧️", "rain"],
+    85: ["Snow showers", "🌨️", "🌨️", "snow"], 86: ["Heavy snow showers", "🌨️", "🌨️", "snow"],
+    95: ["Thunderstorm", "⛈️", "⛈️", "storm"], 96: ["Thunderstorm, hail", "⛈️", "⛈️", "storm"], 99: ["Thunderstorm, hail", "⛈️", "⛈️", "storm"]
+  };
+  const wx = (code, isDay = 1) => { const w = WMO[code] || ["Unknown", "🌡️", "🌡️", "clouds"]; return { label: w[0], emoji: isDay ? w[1] : w[2], theme: w[3] }; };
+
+  const deg = (n) => Math.round(n) + "°";
+  const compass = (d) => ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(d / 45) % 8];
+  const hm = (iso) => { const [h, m] = iso.slice(11, 16).split(":").map(Number); return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+  const hr = (iso) => { const h = +iso.slice(11, 13); return `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`; };
+  const dayName = (d, i) => i === 0 ? "Today" : new Date(d + "T00:00:00Z").toLocaleDateString([], { weekday: "short", timeZone: "UTC" });
+  const uvLabel = (u) => u < 3 ? "Low" : u < 6 ? "Moderate" : u < 8 ? "High" : u < 11 ? "Very high" : "Extreme";
+
+  function setStatus(msg, isError = false) { const s = $("status"); s.textContent = msg; s.className = isError ? "error" : ""; }
+
+  async function getJSON(url) {
+    let res;
+    try { res = await fetch(url, { cache: "no-store" }); } catch { throw new Error("Couldn't reach the weather service. Check your internet connection."); }
+    if (!res.ok) throw new Error("The weather service had a problem. Try again in a moment.");
+    return res.json();
+  }
+
+  async function searchCities(name, count = 5) {
+    const data = await getJSON(`${GEO}?name=${encodeURIComponent(name)}&count=${count}&language=en&format=json`);
+    return data.results || [];
+  }
+
+  let lastUpdate = 0, utcOffset = 0, reqId = 0;
+
+  async function load(p, silent = false) {
+    const id = ++reqId;
+    place = p;
+    store.set("place", JSON.stringify(p));
+    if (!silent) setStatus("Loading weather…");
+    const f = unit === "c" ? "celsius" : "fahrenheit";
+    const w = unit === "c" ? "kmh" : "mph";
+    const url = `${FC}?latitude=${p.lat}&longitude=${p.lon}` +
+      `&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m` +
+      `&hourly=temperature_2m,weather_code,precipitation_probability,is_day` +
+      `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_probability_max` +
+      `&timezone=auto&forecast_days=7&temperature_unit=${f}&wind_speed_unit=${w}`;
+    try {
+      const d = await getJSON(url);
+      if (id !== reqId) return; // a newer request replaced this one
+      utcOffset = d.utc_offset_seconds || 0;
+      lastUpdate = Date.now();
+      render(p, d);
+      setStatus("");
+    } catch (e) {
+      if (id !== reqId) return;
+      if (silent && !$("out").hidden) setStatus("Couldn't refresh. Showing the last update and retrying shortly.", true);
+      else { $("out").hidden = true; setStatus(e.message, true); }
+    }
+  }
+
+  function render(p, d) {
+    const c = d.current, dl = d.daily, h = d.hourly;
+    const now = wx(c.weather_code, c.is_day);
+    document.body.dataset.theme = (now.theme === "clear" ? (c.is_day ? "clear" : "night") : now.theme);
+
+    $("place").textContent = p.label;
+    tick();
+    $("temp").innerHTML = `${Math.round(c.temperature_2m)}<sup>°${unit.toUpperCase()}</sup>`;
+    $("desc").textContent = now.label;
+    $("hilo").textContent = `High ${deg(dl.temperature_2m_max[0])} · Low ${deg(dl.temperature_2m_min[0])}`;
+    $("emoji").textContent = now.emoji;
+
+    const ws = unit === "c" ? "km/h" : "mph";
+    const uv = dl.uv_index_max[0];
+    const stats = [
+      ["Feels like", deg(c.apparent_temperature)],
+      ["Humidity", `${c.relative_humidity_2m}%`],
+      ["Wind", `${Math.round(c.wind_speed_10m)} ${ws} ${compass(c.wind_direction_10m)}`],
+      ["Pressure", `${Math.round(c.pressure_msl)} hPa`],
+      ["Cloud cover", `${c.cloud_cover}%`],
+      ["Chance of rain today", `${dl.precipitation_probability_max[0] ?? 0}%`],
+      ["UV index", `${Math.round(uv)} · ${uvLabel(uv)}`],
+      ["Sunrise", hm(dl.sunrise[0])],
+      ["Sunset", hm(dl.sunset[0])]
+    ];
+    $("stats").innerHTML = stats.map(([l, v]) => `<div class="stat"><span>${l}</span><b>${esc(v)}</b></div>`).join("");
+
+    const start = Math.max(0, h.time.findIndex((t) => t.slice(0, 13) >= c.time.slice(0, 13)));
+    $("hours").innerHTML = h.time.slice(start, start + 24).map((t, i) => {
+      const j = start + i, x = wx(h.weather_code[j], h.is_day[j]);
+      const pr = h.precipitation_probability[j];
+      return `<div class="hour"><div>${i === 0 ? "Now" : hr(t)}</div><div class="e" title="${esc(x.label)}">${x.emoji}</div>
+        <b>${deg(h.temperature_2m[j])}</b><div class="p">${pr > 0 ? pr + "%" : ""}</div></div>`;
+    }).join("");
+
+    $("days").innerHTML = dl.time.map((t, i) => {
+      const x = wx(dl.weather_code[i]);
+      return `<div class="day"><div class="d">${dayName(t, i)}</div><div class="e">${x.emoji}</div>
+        <div class="r">${esc(x.label)} · ${dl.precipitation_probability_max[i] ?? 0}% rain</div>
+        <div class="t"><b>${deg(dl.temperature_2m_max[i])}</b><span>${deg(dl.temperature_2m_min[i])}</span></div></div>`;
+    }).join("");
+
+    $("out").hidden = false;
+  }
+
+  async function pickCity(name) {
+    setStatus("Searching…");
+    try {
+      const r = await searchCities(name, 1);
+      if (!r.length) { setStatus(`No city found for "${name}". Check the spelling.`, true); return; }
+      choose(r[0]);
+    } catch (e) { setStatus(e.message, true); }
+  }
+
+  function choose(r) {
+    hideSugg();
+    const label = [r.name, r.admin1 && r.admin1 !== r.name ? r.admin1 : null, r.country].filter(Boolean).join(", ");
+    $("q").value = "";
+    load({ label, lat: r.latitude, lon: r.longitude });
+  }
+
+  // Suggestions
+  let timer;
+  function hideSugg() { $("sugg").hidden = true; $("sugg").innerHTML = ""; }
+  $("q").addEventListener("input", (e) => {
+    clearTimeout(timer);
+    const v = e.target.value.trim();
+    if (v.length < 2) return hideSugg();
+    timer = setTimeout(async () => {
+      try {
+        const r = await searchCities(v);
+        if (!r.length) return hideSugg();
+        $("sugg").innerHTML = r.map((x, i) =>
+          `<li><button type="button" data-i="${i}">${esc(x.name)} <small>${esc([x.admin1, x.country].filter(Boolean).join(", "))}</small></button></li>`).join("");
+        $("sugg").hidden = false;
+        $("sugg").onclick = (ev) => { const b = ev.target.closest("button"); if (b) choose(r[+b.dataset.i]); };
+      } catch { hideSugg(); }
+    }, 300);
+  });
+  document.addEventListener("click", (e) => { if (!e.target.closest(".searchwrap")) hideSugg(); });
+  $("form").addEventListener("submit", (e) => { e.preventDefault(); hideSugg(); pickCity($("q").value.trim()); });
+
+  // Quick cities
+  $("chips").innerHTML = CITIES.map((c) => `<button class="btn ghost small" data-city="${c}">${c}</button>`).join("");
+  $("chips").addEventListener("click", (e) => { const b = e.target.closest("[data-city]"); if (b) pickCity(b.dataset.city); });
+
+  // Units
+  function syncUnits() { document.querySelectorAll("[data-u]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.u === unit))); }
+  document.querySelectorAll("[data-u]").forEach((b) => b.addEventListener("click", () => {
+    unit = b.dataset.u; store.set("unit", unit); syncUnits(); if (place) load(place);
+  }));
+
+  // My location
+  $("loc").addEventListener("click", () => {
+    if (!navigator.geolocation) return setStatus("Your browser doesn't support location.", true);
+    setStatus("Finding your location…");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => load({ label: "Your location", lat: pos.coords.latitude.toFixed(3), lon: pos.coords.longitude.toFixed(3) }),
+      () => setStatus("Location access was blocked. Search for a city instead.", true),
+      { timeout: 10000 }
+    );
+  });
+
+  // Live updates: ticking clock, auto-refresh every minute, refresh when the tab regains focus
+  function tick() {
+    if (!place || !lastUpdate) return;
+    const local = new Date(Date.now() + utcOffset * 1000)
+      .toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "UTC" });
+    const s = Math.round((Date.now() - lastUpdate) / 1000);
+    const ago = s < 5 ? "just now" : s < 60 ? `${s}s ago` : `${Math.floor(s / 60)} min ago`;
+    $("time").textContent = `Local time ${local} · Updated ${ago}`;
+  }
+  setInterval(tick, 1000);
+  setInterval(() => { if (place && !document.hidden) load(place, true); }, 60000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && place && Date.now() - lastUpdate > 30000) load(place, true);
+  });
+  $("refresh").addEventListener("click", () => { if (place) load(place, true); });
+
+  // Start: last place, or London
+  syncUnits();
+  let saved = null;
+  try { saved = JSON.parse(store.get("place")); } catch {}
+  saved ? load(saved) : pickCity("London");
+</script>
+</body>
+</html>
